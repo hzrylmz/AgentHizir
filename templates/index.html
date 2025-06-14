@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>HızırAgent Web Sohbet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 15px; background: #f4f4f4;}
+        .chat-box { background: #fff; border-radius: 8px; padding: 20px; max-width: 600px; margin: auto; box-shadow: 0 0 10px #ccc;}
+        .msg { margin: 10px 0; display: flex; }
+        .user-bubble {
+            background: #e6f7ff; color: #333; font-weight: bold;
+            border-radius: 12px 12px 0 12px; padding: 10px 14px;
+            margin-left: auto; max-width: 70%; box-shadow: 0 2px 4px #daf2ff;
+            display: flex; flex-direction: column; position: relative; align-items: flex-end;
+        }
+        .ai-bubble {
+            background: #f1f8e9; color: #1b7e1b;
+            border-radius: 12px 12px 12px 0; padding: 10px 14px;
+            margin-right: auto; max-width: 70%; box-shadow: 0 2px 4px #e8f5e9;
+            display: flex; flex-direction: column; position: relative; align-items: flex-start;
+        }
+        .timestamp {color: #bbb; font-size: .75em; margin-top: 3px;}
+        .delete-btn {
+            background: transparent; border: none; color: #d32f2f;
+            font-size: 1.2em; margin-left: 4px; cursor: pointer;
+        }
+        #chat { max-height: 400px; overflow-y: auto; }
+        #input-area { margin-top: 20px; display: flex; }
+        #message { flex: 1; padding: 10px; font-size: 1em;}
+        #send-btn { padding: 10px 20px; font-size: 1em; }
+        #reset-btn { padding: 8px 16px; font-size: .95em; margin-bottom: 13px; background: #d32f2f; color: #fff; border: none; border-radius: 6px; cursor: pointer;}
+        #reset-btn:hover { background: #b71c1c; }
+        #export-btn { padding: 8px 16px; font-size: .95em; margin-bottom: 13px; background: #1976d2; color: #fff; border: none; border-radius: 6px; cursor: pointer;}
+        #export-btn:hover { background: #004ba0; }
+        #typing-indicator { color:#888; margin-top:8px; margin-bottom:0; }
+        .spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid #1976d2;
+            border-radius: 50%; width: 22px; height: 22px;
+            animation: spin 1.2s linear infinite; display:inline-block; vertical-align:middle; margin-right:8px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @media (max-width: 700px) {
+            .chat-box { max-width: 98vw; padding: 5vw;}
+            .user-bubble, .ai-bubble { max-width: 90vw; font-size: 1em;}
+        }
+    </style>
+</head>
+<body>
+<div class="chat-box">
+    <h2>HızırAgent Web Sohbet</h2>
+    <button id="reset-btn" type="button" onclick="resetMemory()">Hafızayı Sıfırla</button>
+    <button id="export-btn" type="button" onclick="exportChat()">Sohbeti İndir</button>
+    <div id="chat">
+        {% for msg in conversation %}
+            {% if msg.role == "user" %}
+                <div class="msg" data-id="{{msg.id}}">
+                    <div class="user-bubble">
+                        <span>👤 Sen: {{ msg.content | e }}</span>
+                        <span class="timestamp">{{ msg.timestamp }}</span>
+                        <button class="delete-btn" title="Sil" onclick="deleteMessage({{msg.id}})">&times;</button>
+                    </div>
+                </div>
+            {% else %}
+                <div class="msg" data-id="{{msg.id}}">
+                    <div class="ai-bubble">
+                        <span>🤖 HızırAgent: {{ msg.content | e }}</span>
+                        <span class="timestamp">{{ msg.timestamp }}</span>
+                        <button class="delete-btn" title="Sil" onclick="deleteMessage({{msg.id}})">&times;</button>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <div id="typing-indicator" style="display:none;">
+        <span class="spinner"></span> <span>Yazıyor...</span>
+    </div>
+    <form id="input-area" autocomplete="off" onsubmit="return sendMessageStream();">
+        <input type="text" id="message" name="message" autocomplete="off" placeholder="Mesajınızı yazın..." required>
+        <button id="send-btn" type="submit">Gönder</button>
+    </form>
+</div>
+<script>
+    function escapeHTML(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[m];
+        });
+    }
+
+    function sendMessageStream() {
+        var msg = document.getElementById("message").value.trim();
+        if (!msg) return false;
+        var chat = document.getElementById("chat");
+        var now = new Date();
+        var timestamp = now.toLocaleString();
+        chat.innerHTML += `<div class="msg"><div class="user-bubble"><span>👤 Sen: ${escapeHTML(msg)}</span><span class="timestamp">${timestamp}</span></div></div>`;
+        var aiDiv = document.createElement("div");
+        aiDiv.className = "msg";
+        aiDiv.innerHTML = `<div class="ai-bubble"><span>🤖 HızırAgent: <span id="ai-stream"></span></span><span class="timestamp">${timestamp}</span></div>`;
+        chat.appendChild(aiDiv);
+        chat.scrollTop = chat.scrollHeight;
+        document.getElementById("message").value = "";
+        document.getElementById("message").focus();
+
+        // Yazıyor efekti
+        document.getElementById("typing-indicator").style.display = "block";
+
+        fetch("/stream", {
+            method: "POST",
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            body: "message=" + encodeURIComponent(msg)
+        }).then(response => {
+            document.getElementById("typing-indicator").style.display = "none";
+            const reader = response.body.getReader();
+            let decoder = new TextDecoder();
+            function read() {
+                reader.read().then(({done, value}) => {
+                    if (done) return;
+                    document.getElementById("ai-stream").innerText += decoder.decode(value, {stream:true});
+                    chat.scrollTop = chat.scrollHeight;
+                    read();
+                });
+            }
+            read();
+        });
+        return false;
+    }
+
+    function resetMemory() {
+        if (!confirm("Tüm sohbet geçmişi silinecek. Emin misiniz?")) return;
+        fetch("/reset", { method: "POST" })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("chat").innerHTML = "";
+                }
+            });
+    }
+
+    function exportChat() {
+        window.location = "/export";
+    }
+
+    function deleteMessage(id) {
+        if (!confirm("Bu mesaj silinsin mi?")) return;
+        fetch("/delete_message", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({id: id})
+        }).then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                var msgDiv = document.querySelector('.msg[data-id="'+id+'"]');
+                if (msgDiv) msgDiv.remove();
+            }
+        });
+    }
+
+    document.getElementById("message").focus();
+</script>
+</body>
+</html>
