@@ -14,8 +14,8 @@ Agent Dusty is a modular agent developed in Python, featuring an integrated SQLi
 
 1. Clone this repository:
    ```sh
-   git clone https://github.com/hzrylmz/HizirAgent.git
-   cd HizirAgent
+   git clone https://github.com/hzrylmz/AgentDusty.git
+   cd AgentDusty
    ```
 
 2. Create a virtual environment and install the required packages:
