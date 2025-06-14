@@ -5,6 +5,8 @@ import json
 
 app = Flask(__name__)
 
+BOT_NAME = "Agent Dusty"  # Bot adını buradan kolayca değiştir
+
 def get_memory():
     if 'memory' not in g:
         g.memory = SQLiteMemory()
@@ -23,7 +25,7 @@ def index():
         dict(msg) if not isinstance(msg, dict) else msg
         for msg in conversation
     ]
-    return render_template("index.html", conversation=conversation)
+    return render_template("index.html", conversation=conversation, bot_name=BOT_NAME)
 
 def ollama_stream(prompt):
     url = "http://localhost:11434/api/generate"
@@ -39,8 +41,6 @@ def ollama_stream(prompt):
                 if "response" in data:
                     yield data["response"]
 
-from sqlite_memory import SQLiteMemory  
-
 @app.route("/stream", methods=["POST"])
 def stream_response():
     user_message = request.form["message"]
@@ -50,9 +50,9 @@ def stream_response():
     
     prompt = ""
     for msg in mem.get_conversation(last_n=10):
-        role = "User" if msg['role'] == "user" else "AI"
+        role = "User" if msg['role'] == "user" else BOT_NAME
         prompt += f"{role}: {msg['content']}\n"
-    prompt += "AI:"
+    prompt += f"{BOT_NAME}:"
 
     def generate_and_save():
         full_response = ""
@@ -85,7 +85,7 @@ def export():
     conversation = mem.get_conversation()
     export_lines = []
     for msg in conversation:
-        role = "👤 Sen:" if msg['role'] == "user" else "🤖 HızırAgent:"
+        role = "👤 You:" if msg['role'] == "user" else f"🤖 {BOT_NAME}:"
         export_lines.append(f"{role} {msg['content']}")
         export_lines.append(f"{msg['timestamp']}")
         export_lines.append("")  

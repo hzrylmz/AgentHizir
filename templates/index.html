@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>HızırAgent Web Sohbet</title>
+    <title>Agent Dusty</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial, sans-serif; margin: 15px; background: #f4f4f4;}
@@ -48,36 +48,36 @@
 </head>
 <body>
 <div class="chat-box">
-    <h2>HızırAgent Web Sohbet</h2>
-    <button id="reset-btn" type="button" onclick="resetMemory()">Hafızayı Sıfırla</button>
-    <button id="export-btn" type="button" onclick="exportChat()">Sohbeti İndir</button>
+    <h2>Agent Dusty Web Chat</h2>
+    <button id="reset-btn" type="button" onclick="resetMemory()">Reset Memory</button>
+    <button id="export-btn" type="button" onclick="exportChat()">Download Chat</button>
     <div id="chat">
         {% for msg in conversation %}
             {% if msg.role == "user" %}
                 <div class="msg" data-id="{{msg.id}}">
                     <div class="user-bubble">
-                        <span>👤 Sen: {{ msg.content | e }}</span>
+                        <span>👤 You: {{ msg.content | e }}</span>
                         <span class="timestamp">{{ msg.timestamp }}</span>
-                        <button class="delete-btn" title="Sil" onclick="deleteMessage({{msg.id}})">&times;</button>
+                        <button class="delete-btn" title="Delete" onclick="deleteMessage({{msg.id}})">&times;</button>
                     </div>
                 </div>
             {% else %}
                 <div class="msg" data-id="{{msg.id}}">
                     <div class="ai-bubble">
-                        <span>🤖 HızırAgent: {{ msg.content | e }}</span>
+                        <span>🤖 Agent Dusty: {{ msg.content | e }}</span>
                         <span class="timestamp">{{ msg.timestamp }}</span>
-                        <button class="delete-btn" title="Sil" onclick="deleteMessage({{msg.id}})">&times;</button>
+                        <button class="delete-btn" title="Delete" onclick="deleteMessage({{msg.id}})">&times;</button>
                     </div>
                 </div>
             {% endif %}
         {% endfor %}
     </div>
     <div id="typing-indicator" style="display:none;">
-        <span class="spinner"></span> <span>Yazıyor...</span>
+        <span class="spinner"></span> <span>Typing...</span>
     </div>
     <form id="input-area" autocomplete="off" onsubmit="return sendMessageStream();">
-        <input type="text" id="message" name="message" autocomplete="off" placeholder="Mesajınızı yazın..." required>
-        <button id="send-btn" type="submit">Gönder</button>
+        <input type="text" id="message" name="message" autocomplete="off" placeholder="Type your message..." required>
+        <button id="send-btn" type="submit">Send</button>
     </form>
 </div>
 <script>
@@ -95,16 +95,16 @@
         var chat = document.getElementById("chat");
         var now = new Date();
         var timestamp = now.toLocaleString();
-        chat.innerHTML += `<div class="msg"><div class="user-bubble"><span>👤 Sen: ${escapeHTML(msg)}</span><span class="timestamp">${timestamp}</span></div></div>`;
+        chat.innerHTML += `<div class="msg"><div class="user-bubble"><span>👤 You: ${escapeHTML(msg)}</span><span class="timestamp">${timestamp}</span></div></div>`;
         var aiDiv = document.createElement("div");
         aiDiv.className = "msg";
-        aiDiv.innerHTML = `<div class="ai-bubble"><span>🤖 HızırAgent: <span id="ai-stream"></span></span><span class="timestamp">${timestamp}</span></div>`;
+        aiDiv.innerHTML = `<div class="ai-bubble"><span>🤖 Agent Dusty: <span id="ai-stream"></span></span><span class="timestamp">${timestamp}</span></div>`;
         chat.appendChild(aiDiv);
         chat.scrollTop = chat.scrollHeight;
         document.getElementById("message").value = "";
         document.getElementById("message").focus();
 
-        // Yazıyor efekti
+        // Typing indicator
         document.getElementById("typing-indicator").style.display = "block";
 
         fetch("/stream", {
@@ -129,7 +129,7 @@
     }
 
     function resetMemory() {
-        if (!confirm("Tüm sohbet geçmişi silinecek. Emin misiniz?")) return;
+        if (!confirm("All chat history will be deleted. Are you sure?")) return;
         fetch("/reset", { method: "POST" })
             .then(r => r.json())
             .then(data => {
@@ -144,7 +144,7 @@
     }
 
     function deleteMessage(id) {
-        if (!confirm("Bu mesaj silinsin mi?")) return;
+        if (!confirm("Delete this message?")) return;
         fetch("/delete_message", {
             method: "POST",
             headers: {"Content-Type": "application/json"},

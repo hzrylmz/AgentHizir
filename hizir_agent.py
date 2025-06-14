@@ -3,6 +3,7 @@ from sqlite_memory import SQLiteMemory
 import re
 
 memory = SQLiteMemory()
+BOT_NAME = "Agent Dusty"
 
 def query_ollama(prompt):
     response = requests.post(
@@ -16,20 +17,17 @@ def query_ollama(prompt):
     return response.json()["response"]
 
 def clean_ai_response(text):
-    
-    return re.sub(r"^(AI:|User:)\s*", "", text.strip(), flags=re.IGNORECASE)
+    return re.sub(r"^(%s:|User:)\s*" % BOT_NAME, "", text.strip(), flags=re.IGNORECASE)
 
 def chat_with_memory(user_input):
     memory.add_message("user", user_input)
 
     conversation = memory.get_conversation()
-
-    
     prompt = ""
     for msg in conversation:
-        role = "User" if msg['role'] == "user" else "AI"
+        role = "User" if msg['role'] == "user" else BOT_NAME
         prompt += f"{role}: {msg['content']}\n"
-    prompt += "AI:"
+    prompt += f"{BOT_NAME}:"
 
     ai_response = query_ollama(prompt)
     ai_response = clean_ai_response(ai_response)
@@ -38,12 +36,11 @@ def chat_with_memory(user_input):
 
     return ai_response
 
-
-print("HızırAgent + Mistral aktif. Çıkmak için 'exit' yaz.")
+print(f"{BOT_NAME} + Mistral is active. Type 'exit' to quit.")
 while True:
-    user_input = input("👤 Sen: ")
+    user_input = input("👤 You: ")
     if user_input.strip().lower() == 'exit':
-        print("Hafıza kaydedildi, çıkılıyor...")
+        print("Memory saved, exiting...")
         break
     response = chat_with_memory(user_input)
-    print(f"🤖 HızırAgent: {response}")
+    print(f"🤖 {BOT_NAME}: {response}")
